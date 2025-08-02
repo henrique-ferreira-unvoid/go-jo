@@ -26,7 +26,7 @@ nfpms:
     package_name: go-jo
     vendor: Unvoid
     homepage: https://github.com/henrique-ferreira-unvoid/go-jo
-    maintainer: Henrique Ferreira <henrique@unvoid.com>
+    maintainer: Henrique Ferreira <henrique.ferreira@unvoid.com>
     description: A simple GoLang application that prints its current version
     license: MIT
     formats:
@@ -38,13 +38,6 @@ nfpms:
         file_info:
           mode: 0644
         packager: deb
-    scripts:
-      postinstall: |
-        #!/bin/bash
-        # Make the binary executable
-        chmod +x /usr/local/bin/go-jo
-        # Update man database
-        mandb > /dev/null 2>&1 || true
 
 archives:
   - id: go-jo-archive
