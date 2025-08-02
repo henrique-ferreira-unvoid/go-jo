@@ -1,0 +1,29 @@
+[Unit]
+Description=go-jo API service
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+ExecStart=/usr/local/bin/go-jo-api
+Restart=always
+RestartSec=5s
+Environment=PORT=1207
+EnvironmentFile=-/etc/go-jo-api/.env
+
+# Security settings
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/tmp
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=go-jo-api
+
+[Install]
+WantedBy=multi-user.target 
