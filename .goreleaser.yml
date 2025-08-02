@@ -31,12 +31,17 @@ nfpms:
     formats:
       - deb
     bindir: /usr/local/bin
+    file_name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     contents:
       - src: ./apps/go-jo/go-jo.1
         dst: /usr/share/man/man1/go-jo.1
         file_info:
           mode: 0644
         packager: deb
+    overrides:
+      deb:
+        dependencies:
+          - libc6
 
 archives:
   - id: go-jo-archive

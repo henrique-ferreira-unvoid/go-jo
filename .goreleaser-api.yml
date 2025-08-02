@@ -1,0 +1,78 @@
+version: 2
+
+project_name: go-jo-api
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: go-jo-api
+    main: ./apps/go-jo-api
+    binary: go-jo-api
+    goos:
+      - linux
+    goarch:
+      - amd64
+    ldflags:
+      - -s -w
+      - -X github.com/henrique-ferreira-unvoid/go-jo/apps/go-jo-api/api/domain.Version={{.Version}}
+      - -X github.com/henrique-ferreira-unvoid/go-jo/apps/go-jo-api/api/domain.GitCommit={{.Commit}}
+      - -X github.com/henrique-ferreira-unvoid/go-jo/apps/go-jo-api/api/domain.BuildDate={{.Date}}
+
+nfpms:
+  - id: go-jo-api-deb
+    package_name: go-jo-api
+    vendor: Unvoid
+    homepage: https://github.com/henrique-ferreira-unvoid/go-jo
+    maintainer: Henrique Ferreira <henrique.ferreira@unvoid.com>
+    description: REST API for go-jo version and integration management
+    license: MIT
+    formats:
+      - deb
+    bindir: /usr/local/bin
+    file_name_template: "{{ .PackageName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    contents:
+      - src: ./apps/go-jo-api/go-jo-api.service
+        dst: /etc/systemd/system/go-jo-api.service
+        file_info:
+          mode: 0644
+        packager: deb
+      - src: ./apps/go-jo-api/deployment/config/config.yaml
+        dst: /etc/go-jo-api/config.yaml
+        file_info:
+          mode: 0644
+        packager: deb
+    scripts:
+      postinstall: ./apps/go-jo-api/postinstall.sh
+    overrides:
+      deb:
+        dependencies:
+          - libc6
+          - systemd
+
+archives:
+  - id: go-jo-api-archive
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+
+checksum:
+  name_template: "checksums.txt"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^ci:"
+      - "^chore:"
+      - Merge pull request
+      - Merge branch
+
+release:
+  github:
+    owner: henrique-ferreira-unvoid
+    name: go-jo
+  draft: false
+  prerelease: auto
+  name_template: "v{{ .Version }}"

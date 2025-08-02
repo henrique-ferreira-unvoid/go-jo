@@ -1,0 +1,24 @@
+# go-jo-api Configuration
+api:
+  port: "1207"
+  request_timeout: "30s"
+  temp_dir_prefix: "go-jo-api-"
+
+github:
+  api_base_url: "https://api.github.com"
+  token: "your-github-token-here"
+  repositories:
+    go_jo: "henrique-ferreira-unvoid/go-jo"
+    docker_environments: "henrique-ferreira-unvoid/go-jo-docker-environments"
+
+license:
+  token: "your-license-token-here"
+
+server:
+  read_timeout: "15s"
+  write_timeout: "15s"
+
+# Application metadata
+app:
+  name: "go-jo-api"
+  version: "1.0.0"

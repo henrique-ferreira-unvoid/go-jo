@@ -23,9 +23,9 @@ func NewIntegrationsHandler(config *domain.Config) *IntegrationsHandler {
 
 // GetIntegrations handles GET /integrations - Get all branches from go-jo-docker-environments
 func (h *IntegrationsHandler) GetIntegrations(w http.ResponseWriter, r *http.Request) {
-	log.Printf("Fetching integrations (branches) for repository: %s", domain.DOCKER_ENV_REPO)
+	log.Printf("Fetching integrations (branches) for repository: %s", h.Config.GetDockerEnvRepo())
 
-	branches, err := h.fetchGitHubBranches(domain.DOCKER_ENV_REPO)
+	branches, err := h.fetchGitHubBranches(h.Config.GetDockerEnvRepo())
 	if err != nil {
 		h.SendErrorResponse(w, http.StatusInternalServerError, "Failed to fetch branches: "+err.Error())
 		return
@@ -47,7 +47,7 @@ func (h *IntegrationsHandler) GetIntegrations(w http.ResponseWriter, r *http.Req
 
 // fetchGitHubBranches fetches branches from GitHub API
 func (h *IntegrationsHandler) fetchGitHubBranches(repo string) ([]domain.GitHubBranch, error) {
-	url := fmt.Sprintf("%s/repos/%s/branches", domain.GITHUB_API_BASE_URL, repo)
+	url := fmt.Sprintf("%s/repos/%s/branches", h.Config.GetGitHubAPIBaseURL(), repo)
 
 	var branches []domain.GitHubBranch
 	err := h.FetchFromGitHub(url, &branches)

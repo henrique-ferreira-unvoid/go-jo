@@ -54,20 +54,19 @@ api-build:
 	@go build -o dist/api-bin/go-jo-api ./apps/go-jo-api
 	@echo "Binary built at: dist/api-bin/go-jo-api"
 
-# Create go-jo-api .deb package for testing
+# Create go-jo-api .deb package using GoReleaser
 api-package:
-	@echo "Creating go-jo-api .deb package..."
-	@echo "Note: This creates a simple directory structure for testing"
-	@rm -rf dist/api-package
-	@mkdir -p dist/api-package/usr/local/bin
-	@mkdir -p dist/api-package/etc/systemd/system
-	@mkdir -p dist/api-package/etc/go-jo-api
-	@go build -o dist/api-package/usr/local/bin/go-jo-api ./apps/go-jo-api
-	@cp apps/go-jo-api/go-jo-api.service dist/api-package/etc/systemd/system/
-	@cp env.example dist/api-package/etc/go-jo-api/.env.example
-	@echo "Package structure created in dist/api-package/"
-	@echo "Contents:"
-	@find dist/api-package/ -type f
+	@echo "Creating go-jo-api .deb package using GoReleaser..."
+	@if ! git describe --tags --exact-match 2>/dev/null; then \
+		echo "No git tag found, creating temporary tag for packaging..."; \
+		git tag -a v0.1.0-test -m "Temporary tag for testing packaging" 2>/dev/null || true; \
+		goreleaser release --config .goreleaser-api.yml --snapshot --clean --skip=publish; \
+		git tag -d v0.1.0-test 2>/dev/null || true; \
+	else \
+		goreleaser release --config .goreleaser-api.yml --snapshot --clean --skip=publish; \
+	fi
+	@echo "API package created in dist/ directory"
+	@find dist/ -name "*api*.deb" -type f | head -5
 
 # Run go-jo-api in development mode
 api-dev:

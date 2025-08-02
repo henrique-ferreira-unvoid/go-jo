@@ -24,7 +24,9 @@ func (h *HealthHandler) HealthCheck(w http.ResponseWriter, r *http.Request) {
 	response := domain.HealthResponse{
 		Status:    "healthy",
 		Timestamp: time.Now().UTC().Format(time.RFC3339),
-		Version:   "1.0.0",
+		Version:   domain.Version,
+		GitCommit: domain.GitCommit,
+		BuildDate: domain.BuildDate,
 	}
 	h.SendJSONResponse(w, http.StatusOK, response)
 }

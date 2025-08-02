@@ -3,8 +3,6 @@ package api
 import (
 	"log"
 	"net/http"
-	"os"
-	"time"
 
 	"github.com/henrique-ferreira-unvoid/go-jo/apps/go-jo-api/api/domain"
 	"github.com/henrique-ferreira-unvoid/go-jo/apps/go-jo-api/api/router"
@@ -20,12 +18,13 @@ type API struct {
 
 // New creates a new API instance
 func New() *API {
-	// Load environment variables
-	if err := godotenv.Load(); err != nil {
-		log.Printf("Warning: Could not load .env file: %v", err)
-	}
+	// Load environment variables (if there is a .env file)
+	_ = godotenv.Load()
 
-	config := loadConfig()
+	config, err := domain.LoadConfig()
+	if err != nil {
+		log.Fatalf("Failed to load configuration: %v", err)
+	}
 
 	// Validate required configuration
 	if config.LicenseToken == "" {
@@ -40,10 +39,10 @@ func New() *API {
 
 	// Create server
 	server := &http.Server{
-		Addr:         ":" + config.Port,
+		Addr:         ":" + config.API.DefaultPort,
 		Handler:      apiRouter.GetRouter(),
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 15 * time.Second,
+		ReadTimeout:  config.Server.ReadTimeout,
+		WriteTimeout: config.Server.WriteTimeout,
 	}
 
 	return &API{
@@ -55,7 +54,9 @@ func New() *API {
 
 // Start starts the API server
 func (a *API) Start() error {
-	log.Printf("Starting go-jo-api on port %s", a.config.Port)
+	log.Printf("Starting %s v%s on port %s", a.config.App.Name, domain.Version, a.config.API.DefaultPort)
+	log.Printf("Build info: commit=%s, date=%s", domain.GitCommit, domain.BuildDate)
+	log.Printf("Configuration loaded from: %s", "config.yaml")
 	log.Printf("Endpoints available:")
 	log.Printf("  GET /versions")
 	log.Printf("  GET /integrations")
@@ -82,21 +83,4 @@ func (a *API) GetConfig() *domain.Config {
 // GetRouter returns the API router
 func (a *API) GetRouter() *router.Router {
 	return a.router
-}
-
-// loadConfig loads configuration from environment variables
-func loadConfig() *domain.Config {
-	return &domain.Config{
-		Port:         getEnvOrDefault("PORT", domain.DEFAULT_PORT),
-		GitHubToken:  os.Getenv("GITHUB_TOKEN"),
-		LicenseToken: os.Getenv("LICENSE_TOKEN"),
-	}
-}
-
-// getEnvOrDefault returns environment variable value or default if not set
-func getEnvOrDefault(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return defaultValue
 }

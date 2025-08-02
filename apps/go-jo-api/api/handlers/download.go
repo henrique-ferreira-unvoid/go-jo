@@ -49,7 +49,7 @@ func (h *DownloadHandler) DownloadPackage(w http.ResponseWriter, r *http.Request
 	}
 
 	// Create temporary directory
-	tempDir, err := os.MkdirTemp("", domain.TEMP_DIR_PREFIX)
+	tempDir, err := os.MkdirTemp("", h.Config.GetTempDirPrefix())
 	if err != nil {
 		h.SendErrorResponse(w, http.StatusInternalServerError, "Failed to create temp directory: "+err.Error())
 		return
@@ -84,7 +84,7 @@ func (h *DownloadHandler) DownloadPackage(w http.ResponseWriter, r *http.Request
 // downloadAppDeb downloads the .deb file for a specific version
 func (h *DownloadHandler) downloadAppDeb(version, tempDir string) (string, error) {
 	// Fetch release with assets
-	url := fmt.Sprintf("%s/repos/%s/releases/tags/%s", domain.GITHUB_API_BASE_URL, domain.GO_JO_REPO, version)
+	url := fmt.Sprintf("%s/repos/%s/releases/tags/%s", h.Config.GetGitHubAPIBaseURL(), h.Config.GetGoJoRepo(), version)
 
 	var release domain.GitHubReleaseWithAssets
 	err := h.FetchFromGitHub(url, &release)
@@ -106,14 +106,14 @@ func (h *DownloadHandler) downloadAppDeb(version, tempDir string) (string, error
 	}
 
 	// Download .deb file
-	debPath := filepath.Join(tempDir, "go-jo-selected.deb")
+	debPath := filepath.Join(tempDir, "app-selected.deb")
 	return debPath, h.downloadFile(debURL, debPath)
 }
 
 // downloadIntegrationZip downloads the integration branch as a zip file
 func (h *DownloadHandler) downloadIntegrationZip(integration, tempDir string) (string, error) {
 	// GitHub archive URL for branch
-	url := fmt.Sprintf("https://github.com/%s/archive/refs/heads/%s.zip", domain.DOCKER_ENV_REPO, integration)
+	url := fmt.Sprintf("https://github.com/%s/archive/refs/heads/%s.zip", h.Config.GetDockerEnvRepo(), integration)
 
 	zipPath := filepath.Join(tempDir, "integration.zip")
 	return zipPath, h.downloadFile(url, zipPath)
@@ -121,7 +121,7 @@ func (h *DownloadHandler) downloadIntegrationZip(integration, tempDir string) (s
 
 // downloadFile downloads a file from a URL
 func (h *DownloadHandler) downloadFile(url, filepath string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), domain.REQUEST_TIMEOUT)
+	ctx, cancel := context.WithTimeout(context.Background(), h.Config.Server.ReadTimeout)
 	defer cancel()
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)

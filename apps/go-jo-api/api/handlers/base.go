@@ -89,7 +89,7 @@ func (h *BaseHandler) SendFileResponse(w http.ResponseWriter, filePath, filename
 
 // FetchFromGitHub makes authenticated requests to GitHub API
 func (h *BaseHandler) FetchFromGitHub(url string, result interface{}) error {
-	ctx, cancel := context.WithTimeout(context.Background(), domain.REQUEST_TIMEOUT)
+	ctx, cancel := context.WithTimeout(context.Background(), h.Config.GetRequestTimeout())
 	defer cancel()
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)

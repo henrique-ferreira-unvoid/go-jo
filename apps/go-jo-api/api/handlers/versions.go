@@ -24,9 +24,9 @@ func NewVersionsHandler(config *domain.Config) *VersionsHandler {
 
 // GetVersions handles GET /versions - Get all available tagged versions of go-jo
 func (h *VersionsHandler) GetVersions(w http.ResponseWriter, r *http.Request) {
-	log.Printf("Fetching versions for repository: %s", domain.GO_JO_REPO)
+	log.Printf("Fetching versions for repository: %s", h.Config.GetGoJoRepo())
 
-	releases, err := h.fetchGitHubReleases(domain.GO_JO_REPO)
+	releases, err := h.fetchGitHubReleases(h.Config.GetGoJoRepo())
 	if err != nil {
 		h.SendErrorResponse(w, http.StatusInternalServerError, "Failed to fetch releases: "+err.Error())
 		return
@@ -50,7 +50,7 @@ func (h *VersionsHandler) GetVersions(w http.ResponseWriter, r *http.Request) {
 
 // GetLatestVersion returns the latest non-draft version
 func (h *VersionsHandler) GetLatestVersion() (string, error) {
-	releases, err := h.fetchGitHubReleases(domain.GO_JO_REPO)
+	releases, err := h.fetchGitHubReleases(h.Config.GetGoJoRepo())
 	if err != nil {
 		return "", err
 	}
@@ -66,7 +66,7 @@ func (h *VersionsHandler) GetLatestVersion() (string, error) {
 
 // fetchGitHubReleases fetches releases from GitHub API
 func (h *VersionsHandler) fetchGitHubReleases(repo string) ([]domain.GitHubRelease, error) {
-	url := fmt.Sprintf("%s/repos/%s/releases", domain.GITHUB_API_BASE_URL, repo)
+	url := fmt.Sprintf("%s/repos/%s/releases", h.Config.GetGitHubAPIBaseURL(), repo)
 
 	var releases []domain.GitHubRelease
 	err := h.FetchFromGitHub(url, &releases)
