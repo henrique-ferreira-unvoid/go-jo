@@ -1,5 +1,5 @@
 # go-jo Monorepo Makefile
-.PHONY: help gojo-build gojo-fast-release gojo-dev gojo-package clean
+.PHONY: help gojo-build gojo-dev gojo-package clean
 
 # Default target
 help:
@@ -46,4 +46,4 @@ clean:
 build-all: gojo-build
 
 # Release everything (for CI/CD)
-release-all: gojo-fast-release 
+release-all: gojo-package 

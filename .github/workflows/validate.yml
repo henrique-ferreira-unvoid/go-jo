@@ -1,0 +1,88 @@
+name: Validation
+
+on:
+  pull_request:
+    branches: [main, dev]
+  push:
+    branches: [main, dev]
+
+env:
+  GO_VERSION: "1.24"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Verify dependencies
+        run: go mod verify
+
+      - name: Run go vet
+        run: go vet ./...
+
+      - name: Run tests
+        run: go test -v ./... -race -coverprofile=coverage.out
+
+      - name: Build go-jo
+        run: |
+          echo "Building go-jo..."
+          go build -o dist/go-jo ./apps/go-jo
+          ./dist/go-jo
+
+      - name: Install GoReleaser
+        uses: goreleaser/goreleaser-action@v5
+        with:
+          install-only: true
+
+      - name: Test GoReleaser build
+        run: |
+          echo "Testing GoReleaser build..."
+          goreleaser build --snapshot --clean --single-target
+
+      - name: Test Makefile targets
+        run: |
+          echo "Testing Makefile targets..."
+          make clean
+          make gojo-build
+          make gojo-dev
+          echo "All Makefile targets work correctly"
+
+      - name: Upload coverage reports
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.out
+
+      - name: Validation summary
+        run: |
+          echo "## Validation Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ **Go modules:** Downloaded and verified" >> $GITHUB_STEP_SUMMARY
+          echo "✅ **Static analysis:** go vet passed" >> $GITHUB_STEP_SUMMARY
+          echo "✅ **Tests:** All tests passed" >> $GITHUB_STEP_SUMMARY
+          echo "✅ **Build:** go-jo builds successfully" >> $GITHUB_STEP_SUMMARY
+          echo "✅ **GoReleaser:** Build test passed" >> $GITHUB_STEP_SUMMARY
+          echo "✅ **Makefile:** All targets work correctly" >> $GITHUB_STEP_SUMMARY
