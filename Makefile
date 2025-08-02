@@ -59,9 +59,9 @@ api-package:
 	@echo "Creating go-jo-api .deb package using GoReleaser..."
 	@if ! git describe --tags --exact-match 2>/dev/null; then \
 		echo "No git tag found, creating temporary tag for packaging..."; \
-		git tag -a v0.1.0-test -m "Temporary tag for testing packaging" 2>/dev/null || true; \
+		git tag -a api-v0.1.0-test -m "Temporary tag for testing API packaging" 2>/dev/null || true; \
 		goreleaser release --config .goreleaser-api.yml --snapshot --clean --skip=publish; \
-		git tag -d v0.1.0-test 2>/dev/null || true; \
+		git tag -d api-v0.1.0-test 2>/dev/null || true; \
 	else \
 		goreleaser release --config .goreleaser-api.yml --snapshot --clean --skip=publish; \
 	fi

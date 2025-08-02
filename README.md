@@ -188,24 +188,26 @@ curl http://localhost:1207/health
 
 ### GitHub Actions Workflows
 
-#### 1. Branch Merging (`branch-merge.yml`)
+#### 1. Branch Merge Automation (`branch-merge.yml`)
 
-Manually triggered workflow for merging branches:
+Automatically merges branches (main ↔ dev) with proper PR creation and auto-merge.
 
-- **main-to-dev**: Merges main into dev (for hotfixes)
-- **dev-to-main**: Merges dev into main (for releases)
-- Creates pull requests with auto-merge enabled
-- Follows the required branching strategy
+#### 2. Release Management
 
-#### 2. Release Management (`release.yml`)
+Unified release system with separate build workflows:
 
-Manually triggered workflow for creating releases:
+##### Main Release Orchestrator (`release.yml`)
+The primary release workflow that coordinates everything:
 
-- Merges dev to main (unless skipped)
-- Auto-increments version (patch/minor/major) or uses manual version
-- Creates git tags
-- Builds and publishes releases with GoReleaser
-- Supports pre-release marking
+- **Branch Management**: Merges dev to main (unless skipped)
+- **Version Management**: Auto-increments or uses manual version
+- **Tag Creation**: Creates single `v*` git tag for both apps
+- **Build Orchestration**: Calls individual app build workflows
+- **Release Publishing**: Creates unified GitHub release with all assets
+
+##### Individual Build Workflows
+- **`release-main.yml`**: Builds go-jo app artifacts only
+- **`release-api.yml`**: Builds go-jo-api artifacts only
 
 #### 3. Validation (`validate.yml`)
 
@@ -216,7 +218,9 @@ Automatically runs on pull requests and pushes:
 - Validates Makefile targets
 - Provides coverage reports
 
-### Creating a Release
+### Creating Releases
+
+#### Unified Release Process
 
 1. Go to Actions tab in GitHub
 2. Select "Generate Release" workflow
@@ -227,8 +231,30 @@ Automatically runs on pull requests and pushes:
 5. Optionally mark as pre-release
 6. The workflow will:
    - Merge dev → main (if not skipped)
-   - Create new version tag
-   - Build and publish release assets
+   - Create single `v*` version tag
+   - Build both go-jo and go-jo-api in parallel
+   - Publish unified GitHub release with all assets
+
+#### Release Features
+
+- **Single Version**: Both apps share the same version (e.g., `v1.2.3`)
+- **Unified Release**: One GitHub release contains all application packages
+- **Parallel Builds**: Apps are built simultaneously for faster releases
+- **Professional Release Notes**: Includes installation instructions for both apps
+
+### Local Development Testing
+
+#### Go-jo App
+```bash
+# Test packaging
+make gojo-package
+```
+
+#### Go-jo API
+```bash
+# Test packaging
+make api-package
+```
 
 ### Manual Branch Merging
 

@@ -101,10 +101,13 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  release:
+  determine-version:
     runs-on: ubuntu-latest
     needs: [merge-branches]
     if: ${{ always() && (inputs.skip_merge || needs.merge-branches.outputs.merge_completed == 'true') }}
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      version_source: ${{ steps.version.outputs.version_source }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -118,16 +121,6 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --global url."https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/".insteadOf "https://github.com/"
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: ${{ env.GO_VERSION }}
-
-      - name: Install GoReleaser
-        uses: goreleaser/goreleaser-action@v5
-        with:
-          install-only: true
 
       - name: List existing tags
         id: existing-tags
@@ -229,23 +222,98 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v5
+  release-main:
+    needs: [determine-version]
+    uses: ./.github/workflows/release-main.yml
+    with:
+      version: ${{ needs.determine-version.outputs.version }}
+      prerelease: ${{ inputs.pre_release }}
+    secrets:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  release-api:
+    needs: [determine-version]
+    uses: ./.github/workflows/release-api.yml
+    with:
+      version: ${{ needs.determine-version.outputs.version }}
+      prerelease: ${{ inputs.pre_release }}
+    secrets:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish-release:
+    runs-on: ubuntu-latest
+    needs: [determine-version, release-main, release-api]
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
         with:
-          distribution: goreleaser
-          version: latest
-          args: release --clean
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: main
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+
+      - name: List downloaded artifacts
+        run: |
+          echo "Downloaded artifacts:"
+          find ./artifacts -type f -ls
+
+      - name: Create GitHub Release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ needs.determine-version.outputs.version }}"
+          
+          # Prepare release notes
+          echo "## Release $VERSION" > release_notes.md
+          echo "" >> release_notes.md
+          echo "This release includes both go-jo and go-jo-api applications." >> release_notes.md
+          echo "" >> release_notes.md
+          echo "### Applications Included:" >> release_notes.md
+          echo "- 🚀 **go-jo** - Main CLI application" >> release_notes.md
+          echo "- 🌐 **go-jo-api** - REST API service" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "### Installation:" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "#### go-jo (CLI):" >> release_notes.md
+          echo '```bash' >> release_notes.md
+          echo "sudo dpkg -i go-jo_*_linux_amd64.deb" >> release_notes.md
+          echo '```' >> release_notes.md
+          echo "" >> release_notes.md
+          echo "#### go-jo-api (Service):" >> release_notes.md
+          echo '```bash' >> release_notes.md
+          echo "sudo dpkg -i go-jo-api_*_linux_amd64.deb" >> release_notes.md
+          echo "sudo cp /etc/go-jo-api/.env.example /etc/go-jo-api/.env" >> release_notes.md
+          echo "sudo nano /etc/go-jo-api/.env  # Configure tokens" >> release_notes.md
+          echo "sudo systemctl start go-jo-api" >> release_notes.md
+          echo '```' >> release_notes.md
+          
+          # Create release with all artifacts
+          PRERELEASE_FLAG=""
+          if [ "${{ inputs.pre_release }}" = "true" ]; then
+            PRERELEASE_FLAG="--prerelease"
+          fi
+          
+          gh release create "$VERSION" \
+            $PRERELEASE_FLAG \
+            --title "Release $VERSION" \
+            --notes-file release_notes.md \
+            ./artifacts/go-jo-artifacts/* \
+            ./artifacts/go-jo-api-artifacts/*
 
       - name: Create release summary
         run: |
           echo "## Release Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Version:** ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Version Source:** ${{ steps.version.outputs.version_source }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** ${{ needs.determine-version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Version Source:** ${{ needs.determine-version.outputs.version_source }}" >> $GITHUB_STEP_SUMMARY
 
-          case "${{ steps.version.outputs.version_source }}" in
+          case "${{ needs.determine-version.outputs.version_source }}" in
             "auto-increment")
               echo "**Release Type:** ${{ inputs.release_type }}" >> $GITHUB_STEP_SUMMARY
               ;;
@@ -259,15 +327,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Released Applications" >> $GITHUB_STEP_SUMMARY
           echo "- ✅ go-jo (binary + .deb package)" >> $GITHUB_STEP_SUMMARY
-          echo "- ⏳ go-jo-api (coming soon)" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ go-jo-api (.deb package + systemd service)" >> $GITHUB_STEP_SUMMARY
           echo "- ⏳ go-jo-integration-installer (coming soon)" >> $GITHUB_STEP_SUMMARY
-
-      - name: Update main branch protection
-        if: ${{ !inputs.skip_merge }}
-        run: |
-          # Wait a bit more to ensure everything is synced
-          sleep 10
-
-          # Pull the latest changes to main
-          git checkout main
-          git pull origin main
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🎉 **Release ${{ needs.determine-version.outputs.version }} published successfully!**" >> $GITHUB_STEP_SUMMARY

@@ -1,0 +1,59 @@
+name: Release API
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: 'Version to release (e.g., v1.2.3)'
+        required: true
+        type: string
+      prerelease:
+        description: 'Mark as pre-release'
+        required: false
+        default: false
+        type: boolean
+    secrets:
+      GITHUB_TOKEN:
+        required: true
+
+jobs:
+  release-api:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+        ref: main
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.24'
+
+    - name: Install GoReleaser
+      uses: goreleaser/goreleaser-action@v6
+      with:
+        distribution: goreleaser
+        version: latest
+        install-only: true
+
+    - name: Run GoReleaser for go-jo-api
+      run: |
+        echo "Building go-jo-api for version ${{ inputs.version }}"
+        goreleaser release --config .goreleaser-api.yml --clean --skip=publish
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Upload go-jo-api artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: go-jo-api-artifacts
+        path: |
+          dist/*api*.deb
+          dist/*api*.tar.gz
+        retention-days: 1 
