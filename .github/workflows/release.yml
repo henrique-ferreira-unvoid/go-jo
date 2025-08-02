@@ -228,8 +228,6 @@ jobs:
     with:
       version: ${{ needs.determine-version.outputs.version }}
       prerelease: ${{ inputs.pre_release }}
-    secrets:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   release-api:
     needs: [determine-version]
@@ -237,8 +235,6 @@ jobs:
     with:
       version: ${{ needs.determine-version.outputs.version }}
       prerelease: ${{ inputs.pre_release }}
-    secrets:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   publish-release:
     runs-on: ubuntu-latest
