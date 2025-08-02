@@ -113,6 +113,12 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           ref: main
 
+      - name: Configure Git with token
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --global url."https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/".insteadOf "https://github.com/"
+
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
@@ -212,13 +218,16 @@ jobs:
           # Check if tag already exists and delete it
           if git tag -l | grep -q "^$VERSION$"; then
             echo "Tag $VERSION already exists, deleting and recreating..."
-            git tag -d $VERSION
+            git tag -d $VERSION || true
             git push origin :refs/tags/$VERSION || true
+            sleep 2
           fi
 
           # Create new tag
           git tag -a $VERSION -m "Release $VERSION"
           git push origin $VERSION
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v5
