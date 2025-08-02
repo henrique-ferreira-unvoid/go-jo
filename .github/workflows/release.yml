@@ -1,17 +1,43 @@
-name: Release Management
+name: Generate Release
 
 on:
   workflow_dispatch:
     inputs:
-      release_type:
-        description: "Type of release"
+      version_source:
+        description: "How to determine the version"
         required: true
+        default: "auto-increment"
+        type: choice
+        options:
+          - "auto-increment"
+          - "manual"
+          - "existing-tag"
+      release_type:
+        description: "Type of auto-increment (only for auto-increment source)"
+        required: false
         default: "patch"
         type: choice
         options:
           - "patch"
           - "minor"
           - "major"
+      manual_version:
+        description: "Manual version (e.g., v1.2.3) - only for manual source"
+        required: false
+        default: ""
+      existing_tag_version:
+        description: "Select existing tag to re-release"
+        required: false
+        default: "latest"
+        type: choice
+        options:
+          - "latest"
+          - "v0.1.0"
+          - "v0.2.0"
+          - "v0.3.0"
+          - "v1.0.0"
+          - "v1.1.0"
+          - "v1.2.0"
       pre_release:
         description: "Mark as pre-release"
         required: false
@@ -111,49 +137,131 @@ jobs:
         with:
           install-only: true
 
-      - name: Determine next version
+      - name: List existing tags
+        id: existing-tags
+        run: |
+          echo "## Available Tags" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "The following tags currently exist in the repository:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Get all tags sorted by version (most recent first)
+          TAGS=$(git tag -l --sort=-version:refname | head -10)
+          if [ -z "$TAGS" ]; then
+            echo "- No tags found" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "$TAGS" | while read tag; do
+              echo "- \`$tag\`" >> $GITHUB_STEP_SUMMARY
+            done
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+      - name: Determine version
         id: version
         run: |
-          # Get the latest tag
-          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
-          echo "Latest tag: $LATEST_TAG"
-
-          # Remove 'v' prefix and split into parts
-          VERSION=${LATEST_TAG#v}
-          IFS='.' read -ra PARTS <<< "$VERSION"
-          MAJOR=${PARTS[0]:-0}
-          MINOR=${PARTS[1]:-0}
-          PATCH=${PARTS[2]:-0}
-
-          # Increment based on release type
-          case "${{ inputs.release_type }}" in
-            "major")
-              MAJOR=$((MAJOR + 1))
-              MINOR=0
-              PATCH=0
+          case "${{ inputs.version_source }}" in
+            "auto-increment")
+              # Get the latest tag
+              LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+              echo "Latest tag: $LATEST_TAG"
+              
+              # Remove 'v' prefix and split into parts
+              VERSION=${LATEST_TAG#v}
+              IFS='.' read -ra PARTS <<< "$VERSION"
+              MAJOR=${PARTS[0]:-0}
+              MINOR=${PARTS[1]:-0}
+              PATCH=${PARTS[2]:-0}
+              
+              # Increment based on release type
+              case "${{ inputs.release_type }}" in
+                "major")
+                  MAJOR=$((MAJOR + 1))
+                  MINOR=0
+                  PATCH=0
+                  ;;
+                "minor")
+                  MINOR=$((MINOR + 1))
+                  PATCH=0
+                  ;;
+                "patch")
+                  PATCH=$((PATCH + 1))
+                  ;;
+              esac
+              
+              NEW_VERSION="v${MAJOR}.${MINOR}.${PATCH}"
+              echo "Auto-incremented version: $NEW_VERSION"
+              echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+              echo "version_source=auto-increment" >> $GITHUB_OUTPUT
               ;;
-            "minor")
-              MINOR=$((MINOR + 1))
-              PATCH=0
+              
+            "manual")
+              MANUAL_VERSION="${{ inputs.manual_version }}"
+              if [ -z "$MANUAL_VERSION" ]; then
+                echo "Error: Manual version cannot be empty"
+                exit 1
+              fi
+              
+              # Add 'v' prefix if not present
+              if [[ ! "$MANUAL_VERSION" =~ ^v ]]; then
+                MANUAL_VERSION="v$MANUAL_VERSION"
+              fi
+              
+              # Check if tag already exists
+              if git tag -l | grep -q "^$MANUAL_VERSION$"; then
+                echo "Warning: Tag $MANUAL_VERSION already exists. This will create a new release for the existing tag."
+              fi
+              
+              echo "Manual version: $MANUAL_VERSION"
+              echo "version=$MANUAL_VERSION" >> $GITHUB_OUTPUT
+              echo "version_source=manual" >> $GITHUB_OUTPUT
               ;;
-            "patch")
-              PATCH=$((PATCH + 1))
+              
+            "existing-tag")
+              EXISTING_TAG="${{ inputs.existing_tag_version }}"
+              if [ "$EXISTING_TAG" = "latest" ]; then
+                EXISTING_TAG=$(git describe --tags --abbrev=0 2>/dev/null)
+                if [ -z "$EXISTING_TAG" ]; then
+                  echo "Error: No existing tags found"
+                  exit 1
+                fi
+              fi
+              
+              # Verify the tag exists
+              if ! git tag -l | grep -q "^$EXISTING_TAG$"; then
+                echo "Error: Tag $EXISTING_TAG does not exist"
+                echo "Available tags:"
+                git tag -l --sort=-version:refname | head -10
+                exit 1
+              fi
+              
+              echo "Using existing tag: $EXISTING_TAG"
+              echo "version=$EXISTING_TAG" >> $GITHUB_OUTPUT
+              echo "version_source=existing-tag" >> $GITHUB_OUTPUT
               ;;
           esac
 
-          NEW_VERSION="v${MAJOR}.${MINOR}.${PATCH}"
-          echo "New version: $NEW_VERSION"
-          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
-
-      - name: Create and push tag
+      - name: Create or update tag
         run: |
-          git tag -a ${{ steps.version.outputs.version }} -m "Release ${{ steps.version.outputs.version }}"
-          git push origin ${{ steps.version.outputs.version }}
+          VERSION="${{ steps.version.outputs.version }}"
+          VERSION_SOURCE="${{ steps.version.outputs.version_source }}"
 
-      - name: Update GoReleaser config for multi-app build
-        run: |
-          # For now, we only have go-jo app, but this will be updated in future steps
-          echo "Using current .goreleaser.yml configuration"
+          if [ "$VERSION_SOURCE" = "existing-tag" ]; then
+            echo "Using existing tag: $VERSION"
+            # Checkout the existing tag
+            git checkout $VERSION
+          else
+            echo "Creating new tag: $VERSION"
+            # Check if tag already exists
+            if git tag -l | grep -q "^$VERSION$"; then
+              echo "Tag $VERSION already exists, deleting and recreating..."
+              git tag -d $VERSION
+              git push origin :refs/tags/$VERSION || true
+            fi
+            
+            # Create new tag
+            git tag -a $VERSION -m "Release $VERSION"
+            git push origin $VERSION
+          fi
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v5
@@ -169,7 +277,20 @@ jobs:
           echo "## Release Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Version:** ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Type:** ${{ inputs.release_type }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Version Source:** ${{ steps.version.outputs.version_source }}" >> $GITHUB_STEP_SUMMARY
+
+          case "${{ steps.version.outputs.version_source }}" in
+            "auto-increment")
+              echo "**Release Type:** ${{ inputs.release_type }}" >> $GITHUB_STEP_SUMMARY
+              ;;
+            "manual")
+              echo "**Manual Version:** ${{ inputs.manual_version }}" >> $GITHUB_STEP_SUMMARY
+              ;;
+            "existing-tag")
+              echo "**Existing Tag:** ${{ inputs.existing_tag_version }}" >> $GITHUB_STEP_SUMMARY
+              ;;
+          esac
+
           echo "**Pre-release:** ${{ inputs.pre_release }}" >> $GITHUB_STEP_SUMMARY
           echo "**Branch merging:** ${{ inputs.skip_merge && 'Skipped' || 'Completed' }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
