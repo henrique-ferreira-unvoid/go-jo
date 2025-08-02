@@ -1,0 +1,73 @@
+version: 2
+
+project_name: go-jo
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: go-jo
+    main: ./apps/go-jo
+    binary: go-jo
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X main.Version={{.Version}}
+      - -X main.GitCommit={{.Commit}}
+      - -X main.BuildDate={{.Date}}
+
+nfpms:
+  - id: go-jo-deb
+    package_name: go-jo
+    vendor: Unvoid
+    homepage: https://github.com/henrique-ferreira-unvoid/go-jo
+    maintainer: Henrique Ferreira <henrique@unvoid.com>
+    description: A simple GoLang application that prints its current version
+    license: MIT
+    formats:
+      - deb
+    bindir: /usr/local/bin
+    contents:
+      - src: ./apps/go-jo/go-jo.1
+        dst: /usr/share/man/man1/go-jo.1
+        file_info:
+          mode: 0644
+        packager: deb
+    scripts:
+      postinstall: |
+        #!/bin/bash
+        # Make the binary executable
+        chmod +x /usr/local/bin/go-jo
+        # Update man database
+        mandb > /dev/null 2>&1 || true
+
+archives:
+  - id: go-jo-archive
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+
+checksum:
+  name_template: "checksums.txt"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^ci:"
+      - "^chore:"
+      - Merge pull request
+      - Merge branch
+
+release:
+  github:
+    owner: henrique-ferreira-unvoid
+    name: go-jo
+  draft: false
+  prerelease: auto
+  name_template: "v{{ .Version }}"
