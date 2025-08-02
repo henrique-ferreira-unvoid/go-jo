@@ -11,7 +11,6 @@ on:
         options:
           - "auto-increment"
           - "manual"
-          - "existing-tag"
       release_type:
         description: "Type of auto-increment (only for auto-increment source)"
         required: false
@@ -22,22 +21,9 @@ on:
           - "minor"
           - "major"
       manual_version:
-        description: "Manual version (e.g., v1.2.3) - only for manual source"
+        description: "Manual version (e.g., v1.2.3 or 1.2.3) - only for manual source"
         required: false
         default: ""
-      existing_tag_version:
-        description: "Select existing tag to re-release"
-        required: false
-        default: "latest"
-        type: choice
-        options:
-          - "latest"
-          - "v0.1.0"
-          - "v0.2.0"
-          - "v0.3.0"
-          - "v1.0.0"
-          - "v1.1.0"
-          - "v1.2.0"
       pre_release:
         description: "Mark as pre-release"
         required: false
@@ -197,7 +183,7 @@ jobs:
             "manual")
               MANUAL_VERSION="${{ inputs.manual_version }}"
               if [ -z "$MANUAL_VERSION" ]; then
-                echo "Error: Manual version cannot be empty"
+                echo "Error: Manual version cannot be empty when using manual source"
                 exit 1
               fi
               
@@ -208,60 +194,31 @@ jobs:
               
               # Check if tag already exists
               if git tag -l | grep -q "^$MANUAL_VERSION$"; then
-                echo "Warning: Tag $MANUAL_VERSION already exists. This will create a new release for the existing tag."
+                echo "Warning: Tag $MANUAL_VERSION already exists. This will overwrite the existing tag."
               fi
               
               echo "Manual version: $MANUAL_VERSION"
               echo "version=$MANUAL_VERSION" >> $GITHUB_OUTPUT
               echo "version_source=manual" >> $GITHUB_OUTPUT
               ;;
-              
-            "existing-tag")
-              EXISTING_TAG="${{ inputs.existing_tag_version }}"
-              if [ "$EXISTING_TAG" = "latest" ]; then
-                EXISTING_TAG=$(git describe --tags --abbrev=0 2>/dev/null)
-                if [ -z "$EXISTING_TAG" ]; then
-                  echo "Error: No existing tags found"
-                  exit 1
-                fi
-              fi
-              
-              # Verify the tag exists
-              if ! git tag -l | grep -q "^$EXISTING_TAG$"; then
-                echo "Error: Tag $EXISTING_TAG does not exist"
-                echo "Available tags:"
-                git tag -l --sort=-version:refname | head -10
-                exit 1
-              fi
-              
-              echo "Using existing tag: $EXISTING_TAG"
-              echo "version=$EXISTING_TAG" >> $GITHUB_OUTPUT
-              echo "version_source=existing-tag" >> $GITHUB_OUTPUT
-              ;;
           esac
 
-      - name: Create or update tag
+      - name: Create tag
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          VERSION_SOURCE="${{ steps.version.outputs.version_source }}"
 
-          if [ "$VERSION_SOURCE" = "existing-tag" ]; then
-            echo "Using existing tag: $VERSION"
-            # Checkout the existing tag
-            git checkout $VERSION
-          else
-            echo "Creating new tag: $VERSION"
-            # Check if tag already exists
-            if git tag -l | grep -q "^$VERSION$"; then
-              echo "Tag $VERSION already exists, deleting and recreating..."
-              git tag -d $VERSION
-              git push origin :refs/tags/$VERSION || true
-            fi
-            
-            # Create new tag
-            git tag -a $VERSION -m "Release $VERSION"
-            git push origin $VERSION
+          echo "Creating tag: $VERSION"
+
+          # Check if tag already exists and delete it
+          if git tag -l | grep -q "^$VERSION$"; then
+            echo "Tag $VERSION already exists, deleting and recreating..."
+            git tag -d $VERSION
+            git push origin :refs/tags/$VERSION || true
           fi
+
+          # Create new tag
+          git tag -a $VERSION -m "Release $VERSION"
+          git push origin $VERSION
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v5
@@ -285,9 +242,6 @@ jobs:
               ;;
             "manual")
               echo "**Manual Version:** ${{ inputs.manual_version }}" >> $GITHUB_STEP_SUMMARY
-              ;;
-            "existing-tag")
-              echo "**Existing Tag:** ${{ inputs.existing_tag_version }}" >> $GITHUB_STEP_SUMMARY
               ;;
           esac
 
