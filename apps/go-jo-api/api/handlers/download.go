@@ -95,7 +95,7 @@ func (h *DownloadHandler) downloadAppDeb(version, tempDir string) (string, error
 	// Find .deb asset
 	var debURL string
 	for _, asset := range release.Assets {
-		if strings.HasSuffix(asset.Name, ".deb") && strings.Contains(asset.Name, "go-jo") {
+		if strings.HasSuffix(asset.Name, ".deb") && strings.Contains(asset.Name, "go-jo_") {
 			debURL = asset.BrowserDownloadURL
 			break
 		}
@@ -106,7 +106,7 @@ func (h *DownloadHandler) downloadAppDeb(version, tempDir string) (string, error
 	}
 
 	// Download .deb file
-	debPath := filepath.Join(tempDir, "app-selected.deb")
+	debPath := filepath.Join(tempDir, "go-jo-selected.deb")
 	return debPath, h.downloadFile(debURL, debPath)
 }
 
@@ -166,7 +166,7 @@ func (h *DownloadHandler) createCombinedZip(debPath, integrationZipPath, integra
 	zipWriter := zip.NewWriter(combinedZip)
 	defer zipWriter.Close()
 
-	// Add the .deb file as "app-selected.deb"
+	// Add the .deb file as "go-jo-selected.deb"
 	if err := h.addFileToZip(zipWriter, debPath, "go-jo-selected.deb"); err != nil {
 		return "", err
 	}
