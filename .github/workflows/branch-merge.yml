@@ -34,6 +34,7 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config pull.rebase false
 
       - name: Create merge branch (main-to-dev)
         if: ${{ github.event.inputs.merge_direction == 'main-to-dev' }}
