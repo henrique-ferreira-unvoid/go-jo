@@ -34,6 +34,7 @@ func (h *DownloadHandler) DownloadPackage(w http.ResponseWriter, r *http.Request
 	vars := mux.Vars(r)
 	appVersion := vars["app_version"]
 	integration := vars["integration"]
+	integration = strings.ReplaceAll(integration, "@", "%2F")
 
 	log.Printf("Download request: version=%s, integration=%s", appVersion, integration)
 
@@ -106,7 +107,7 @@ func (h *DownloadHandler) downloadAppDeb(version, tempDir string) (string, error
 	}
 
 	// Download .deb file using the asset ID (for private repos)
-	debPath := filepath.Join(tempDir, "go-jo-selected.deb")
+	debPath := filepath.Join(tempDir, h.Config.GetDebAppName())
 	return debPath, h.downloadGitHubAsset(debAsset.ID, debPath)
 }
 
@@ -203,13 +204,13 @@ func (h *DownloadHandler) createCombinedZip(debPath, integrationZipPath, integra
 	zipWriter := zip.NewWriter(combinedZip)
 	defer zipWriter.Close()
 
-	// Add the .deb file as "go-jo-selected.deb"
-	if err := h.addFileToZip(zipWriter, debPath, "go-jo-selected.deb"); err != nil {
+	// Extract and add integration zip contents
+	if err := h.addZipContentsToZip(zipWriter, integrationZipPath); err != nil {
 		return "", err
 	}
 
-	// Extract and add integration zip contents
-	if err := h.addZipContentsToZip(zipWriter, integrationZipPath); err != nil {
+	// Add the .deb file
+	if err := h.addFileToZip(zipWriter, debPath, h.Config.GetDebAppName()); err != nil {
 		return "", err
 	}
 

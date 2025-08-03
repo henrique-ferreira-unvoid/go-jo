@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/henrique-ferreira-unvoid/go-jo/apps/go-jo-integration-installer/api"
@@ -11,6 +12,8 @@ import (
 	"github.com/henrique-ferreira-unvoid/go-jo/apps/go-jo-integration-installer/docker"
 	"github.com/henrique-ferreira-unvoid/go-jo/apps/go-jo-integration-installer/utils"
 )
+
+const MAX_OPTIONS = 15
 
 // selectionModel represents the state of the selection interface
 type selectionModel struct {
@@ -200,9 +203,11 @@ func Run() error {
 	fmt.Printf("\033[35m⬇️  Downloading package for version %s with integration %s...\033[0m\n",
 		selectedVersion, selectedIntegration)
 
-	outputPath := fmt.Sprintf("go-jo-%s.zip", selectedIntegration)
+	safeSelectedIntegration := strings.ReplaceAll(selectedIntegration, "/", "@")
 
-	err = client.DownloadPackage(selectedVersion, selectedIntegration, outputPath)
+	outputPath := fmt.Sprintf("go-jo-%s.zip", safeSelectedIntegration)
+
+	err = client.DownloadPackage(selectedVersion, safeSelectedIntegration, outputPath)
 	if err != nil {
 		fmt.Printf("\033[31m❌ Failed to download package: %v\033[0m\n", err)
 		return fmt.Errorf("failed to download package: %w", err)
@@ -231,7 +236,8 @@ func extractAndDeploy(zipPath string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create temp directory: %w", err)
 	}
-	defer os.RemoveAll(tempDir) // Clean up on exit
+	defer os.RemoveAll(tempDir) // Clean up temp directory on exit
+	defer os.Remove(zipPath)    // Clean up zip file on exit
 
 	fmt.Printf("\033[36m📂 Extracting to: %s\033[0m\n", tempDir)
 
@@ -260,6 +266,11 @@ func extractAndDeploy(zipPath string) error {
 func interactiveSelection(options []string, prompt string, latest *string) (string, error) {
 	if len(options) == 0 {
 		return "", fmt.Errorf("no options available")
+	}
+
+	if len(options) > MAX_OPTIONS {
+		fmt.Printf("\033[33m🔍 Showing first %d options...\033[0m\n", MAX_OPTIONS)
+		options = options[:MAX_OPTIONS]
 	}
 
 	m := initialSelectionModel(options, prompt, latest)

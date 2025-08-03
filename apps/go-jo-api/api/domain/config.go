@@ -31,6 +31,7 @@ type Config struct {
 type APIConfig struct {
 	DefaultPort    string `mapstructure:"port"`
 	RequestTimeout string `mapstructure:"request_timeout"`
+	DebAppName     string `mapstructure:"deb_app_name"`
 	TempDirPrefix  string `mapstructure:"temp_dir_prefix"`
 }
 
@@ -85,6 +86,10 @@ func (c *Config) GetRequestTimeout() time.Duration {
 	return timeout
 }
 
+func (c *Config) GetDebAppName() string {
+	return c.API.DebAppName
+}
+
 func (c *Config) GetTempDirPrefix() string {
 	return c.API.TempDirPrefix
 }
@@ -106,6 +111,7 @@ func LoadConfig() (*Config, error) {
 	// Set defaults
 	viper.SetDefault("api.port", "1207")
 	viper.SetDefault("api.request_timeout", "30s")
+	viper.SetDefault("api.deb_app_name", "go-jo-selected.deb")
 	viper.SetDefault("api.temp_dir_prefix", "go-jo-api-")
 	viper.SetDefault("github.api_base_url", "https://api.github.com")
 	viper.SetDefault("github.token", "your-github-token-here")

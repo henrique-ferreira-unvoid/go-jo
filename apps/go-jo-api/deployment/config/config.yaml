@@ -2,6 +2,7 @@
 api:
   port: "1207"
   request_timeout: "30s"
+  deb_app_name: "go-jo-selected.deb"
   temp_dir_prefix: "go-jo-api-"
 
 github:
