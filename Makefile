@@ -21,70 +21,75 @@ help:
 	@echo "  package-all       - Package all applications"
 	@echo "  help              - Show this help message"
 
-# Build go-jo binary for local development
+# Build targets
 gojo-build:
-	@echo "Building go-jo binary..."
+	@echo "Building go-jo..."
 	@mkdir -p dist/go-jo
-	@go build -o dist/go-jo/go-jo ./apps/go-jo
-	@echo "Binary built at: dist/go-jo/go-jo"
+	go build -o dist/go-jo/go-jo ./apps/go-jo
 
-# Create go-jo .deb package (for testing packaging)
+api-build:
+	@echo "Building go-jo-api..."
+	@mkdir -p dist/api-bin
+	go build -o dist/api-bin/go-jo-api ./apps/go-jo-api
+
+installer-build:
+	@echo "Building go-jo-integration-installer..."
+	@mkdir -p dist/installer-bin
+	go build -o dist/installer-bin/go-jo-integration-installer ./apps/go-jo-integration-installer
+
+build-all: gojo-build api-build installer-build
+
+# Package targets
 gojo-package:
-	@echo "Creating go-jo .deb package..."
-	@if ! git describe --tags --exact-match 2>/dev/null; then \
+	@echo "Creating go-jo package..."
+	@if [ -z "$$(git tag --points-at HEAD)" ]; then \
 		echo "No git tag found, creating temporary tag for packaging..."; \
-		git tag -a v0.1.0-test -m "Temporary tag for testing packaging" 2>/dev/null || true; \
-		goreleaser release --snapshot --clean; \
-		git tag -d v0.1.0-test 2>/dev/null || true; \
+		TEMP_TAG="temp-package-$$(date +%s)"; \
+		git tag $$TEMP_TAG; \
+		goreleaser release --config .goreleaser.yml --clean --skip=publish --snapshot; \
+		git tag -d $$TEMP_TAG; \
 	else \
-		goreleaser release --snapshot --clean; \
+		goreleaser release --config .goreleaser.yml --clean --skip=publish --snapshot; \
 	fi
-	@echo "Package created in dist/ directory"
-	@find dist/ -name "*.deb" -type f | head -5
 
-# Run go-jo in development mode
+api-package:
+	@echo "Creating go-jo-api package..."
+	@if [ -z "$$(git tag --points-at HEAD)" ]; then \
+		echo "No git tag found, creating temporary tag for packaging..."; \
+		TEMP_TAG="temp-package-$$(date +%s)"; \
+		git tag $$TEMP_TAG; \
+		goreleaser release --config .goreleaser-api.yml --clean --skip=publish --snapshot; \
+		git tag -d $$TEMP_TAG; \
+	else \
+		goreleaser release --config .goreleaser-api.yml --clean --skip=publish --snapshot; \
+	fi
+
+package-all: gojo-package api-package
+
+# Development targets
 gojo-dev:
 	@echo "Running go-jo in development mode..."
 	@go run ./apps/go-jo
 
-# Build go-jo-api binary for local development
-api-build:
-	@echo "Building go-jo-api binary..."
-	@mkdir -p dist/api-bin
-	@go build -o dist/api-bin/go-jo-api ./apps/go-jo-api
-	@echo "Binary built at: dist/api-bin/go-jo-api"
-
-# Create go-jo-api .deb package using GoReleaser
-api-package:
-	@echo "Creating go-jo-api .deb package using GoReleaser..."
-	@if ! git describe --tags --exact-match 2>/dev/null; then \
-		echo "No git tag found, creating temporary tag for packaging..."; \
-		git tag -a api-v0.1.0-test -m "Temporary tag for testing API packaging" 2>/dev/null || true; \
-		goreleaser release --config .goreleaser-api.yml --snapshot --clean --skip=publish; \
-		git tag -d api-v0.1.0-test 2>/dev/null || true; \
-	else \
-		goreleaser release --config .goreleaser-api.yml --snapshot --clean --skip=publish; \
-	fi
-	@echo "API package created in dist/ directory"
-	@find dist/ -name "*api*.deb" -type f | head -5
-
-# Run go-jo-api in development mode
 api-dev:
 	@echo "Running go-jo-api in development mode..."
-	@echo "Make sure you have a .env file with GITHUB_TOKEN and LICENSE_TOKEN"
-	@go run ./apps/go-jo-api
+	@cd apps/go-jo-api && go run .
 
-# Clean build artifacts
 clean:
 	@echo "Cleaning build artifacts..."
 	@rm -rf dist/
-	@echo "Build artifacts cleaned"
+	@rm -rf .goreleaser/
 
-# Build all applications
-build-all: gojo-build api-build
-
-# Package all applications  
-package-all: gojo-package api-package
-
-# Release everything (for CI/CD)
-release-all: gojo-package 
+help:
+	@echo "Available targets:"
+	@echo "  gojo-build          - Build go-jo binary"
+	@echo "  api-build           - Build go-jo-api binary"
+	@echo "  installer-build     - Build go-jo-integration-installer binary"
+	@echo "  build-all           - Build all applications"
+	@echo "  gojo-package        - Create go-jo .deb package"
+	@echo "  api-package         - Create go-jo-api .deb package"
+	@echo "  package-all         - Create all packages"
+	@echo "  gojo-dev            - Run go-jo in development mode"
+	@echo "  api-dev             - Run go-jo-api in development mode"
+	@echo "  clean               - Clean build artifacts"
+	@echo "  help                - Show this help message" 
