@@ -182,6 +182,7 @@ type GitHubBranch struct {
 }
 
 type GitHubAsset struct {
+	ID                 int    `json:"id"`
 	Name               string `json:"name"`
 	BrowserDownloadURL string `json:"browser_download_url"`
 }

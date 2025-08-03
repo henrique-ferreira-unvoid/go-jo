@@ -93,34 +93,36 @@ func (h *DownloadHandler) downloadAppDeb(version, tempDir string) (string, error
 	}
 
 	// Find .deb asset
-	var debURL string
+	var debAsset *domain.GitHubAsset
 	for _, asset := range release.Assets {
-		if strings.HasSuffix(asset.Name, ".deb") && strings.Contains(asset.Name, "go-jo_") {
-			debURL = asset.BrowserDownloadURL
+		if strings.HasSuffix(asset.Name, ".deb") && !strings.Contains(asset.Name, "api") {
+			debAsset = &asset
 			break
 		}
 	}
 
-	if debURL == "" {
+	if debAsset == nil {
 		return "", fmt.Errorf("no .deb file found in release %s", version)
 	}
 
-	// Download .deb file
+	// Download .deb file using the asset ID (for private repos)
 	debPath := filepath.Join(tempDir, "go-jo-selected.deb")
-	return debPath, h.downloadFile(debURL, debPath)
+	return debPath, h.downloadGitHubAsset(debAsset.ID, debPath)
 }
 
 // downloadIntegrationZip downloads the integration branch as a zip file
 func (h *DownloadHandler) downloadIntegrationZip(integration, tempDir string) (string, error) {
-	// GitHub archive URL for branch
-	url := fmt.Sprintf("https://github.com/%s/archive/refs/heads/%s.zip", h.Config.GetDockerEnvRepo(), integration)
+	// Use GitHub API to get the archive URL for the branch
+	url := fmt.Sprintf("%s/repos/%s/zipball/%s", h.Config.GetGitHubAPIBaseURL(), h.Config.GetDockerEnvRepo(), integration)
 
 	zipPath := filepath.Join(tempDir, "integration.zip")
-	return zipPath, h.downloadFile(url, zipPath)
+	return zipPath, h.downloadGitHubArchive(url, zipPath)
 }
 
-// downloadFile downloads a file from a URL
-func (h *DownloadHandler) downloadFile(url, filepath string) error {
+// downloadGitHubAsset downloads a GitHub asset by ID (works for private repos)
+func (h *DownloadHandler) downloadGitHubAsset(assetID int, filepath string) error {
+	url := fmt.Sprintf("%s/repos/%s/releases/assets/%d", h.Config.GetGitHubAPIBaseURL(), h.Config.GetGoJoRepo(), assetID)
+
 	ctx, cancel := context.WithTimeout(context.Background(), h.Config.Server.ReadTimeout)
 	defer cancel()
 
@@ -130,6 +132,41 @@ func (h *DownloadHandler) downloadFile(url, filepath string) error {
 	}
 
 	req.Header.Set("Authorization", "token "+h.Config.GitHubToken)
+	req.Header.Set("Accept", "application/octet-stream")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("download failed with status: %d", resp.StatusCode)
+	}
+
+	file, err := os.Create(filepath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	_, err = io.Copy(file, resp.Body)
+	return err
+}
+
+// downloadGitHubArchive downloads a GitHub archive (works for private repos)
+func (h *DownloadHandler) downloadGitHubArchive(url, filepath string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), h.Config.Server.ReadTimeout)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("Authorization", "token "+h.Config.GitHubToken)
+	req.Header.Set("Accept", "application/vnd.github.v3+json")
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
