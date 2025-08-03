@@ -39,7 +39,7 @@ func New() *API {
 
 	// Create server
 	server := &http.Server{
-		Addr:         ":" + config.API.DefaultPort,
+		Addr:         "0.0.0.0:" + config.API.DefaultPort,
 		Handler:      apiRouter.GetRouter(),
 		ReadTimeout:  config.Server.ReadTimeout,
 		WriteTimeout: config.Server.WriteTimeout,

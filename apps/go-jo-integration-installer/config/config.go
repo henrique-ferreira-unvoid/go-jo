@@ -7,6 +7,8 @@ import (
 	"github.com/joho/godotenv"
 )
 
+const DEFAULT_API_URL = "http://18.230.69.122/"
+
 // Config holds the application configuration
 type Config struct {
 	APIURL string
@@ -24,8 +26,7 @@ func Load() (*Config, error) {
 	// Get API URL from environment variable
 	apiURL := os.Getenv("API_URL")
 	if apiURL == "" {
-		// Default to localhost if not specified
-		apiURL = "http://localhost:1207"
+		apiURL = DEFAULT_API_URL
 	}
 
 	return &Config{
