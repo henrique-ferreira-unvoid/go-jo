@@ -31,11 +31,10 @@ jobs:
           token: ${{ secrets.GH_TOKEN }}
 
       - name: Configure Git
-        with:
-          token: ${{ secrets.GH_TOKEN }}
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global url."https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/".insteadOf "https://github.com/"
           git config pull.rebase false
 
       - name: Create merge branch (main-to-dev)
