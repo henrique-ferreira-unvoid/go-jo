@@ -167,7 +167,7 @@ func (h *DownloadHandler) createCombinedZip(debPath, integrationZipPath, integra
 	defer zipWriter.Close()
 
 	// Add the .deb file as "app-selected.deb"
-	if err := h.addFileToZip(zipWriter, debPath, "app-selected.deb"); err != nil {
+	if err := h.addFileToZip(zipWriter, debPath, "go-jo-selected.deb"); err != nil {
 		return "", err
 	}
 
