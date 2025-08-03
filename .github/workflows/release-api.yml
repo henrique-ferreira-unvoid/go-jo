@@ -46,6 +46,12 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+    - name: Rename checksums file to avoid conflicts
+      run: |
+        if [ -f dist/checksums.txt ]; then
+          mv dist/checksums.txt dist/go-jo-api-checksums.txt
+        fi
+
     - name: Upload go-jo-api artifacts
       uses: actions/upload-artifact@v4
       with:
@@ -53,4 +59,5 @@ jobs:
         path: |
           dist/*api*.deb
           dist/*api*.tar.gz
+          dist/go-jo-api-checksums.txt
         retention-days: 1 

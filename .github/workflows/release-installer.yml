@@ -47,7 +47,7 @@ jobs:
         tar -czf go-jo-integration-installer_${{ inputs.version }}_linux_amd64.tar.gz go-jo-integration-installer
         
         # Create checksum file
-        sha256sum go-jo-integration-installer_${{ inputs.version }}_linux_amd64.tar.gz > checksums.txt
+        sha256sum go-jo-integration-installer_${{ inputs.version }}_linux_amd64.tar.gz > installer-checksums.txt
         
         echo "Build completed successfully"
 
@@ -58,5 +58,5 @@ jobs:
         path: |
           dist/installer/go-jo-integration-installer
           dist/installer/go-jo-integration-installer_*_linux_amd64.tar.gz
-          dist/installer/checksums.txt
+          dist/installer/installer-checksums.txt
         retention-days: 1 
