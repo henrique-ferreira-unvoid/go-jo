@@ -4,11 +4,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/henrique-ferreira-unvoid/go-jo/apps/go-jo-integration-installer/api"
 	"github.com/henrique-ferreira-unvoid/go-jo/apps/go-jo-integration-installer/config"
+	"github.com/henrique-ferreira-unvoid/go-jo/apps/go-jo-integration-installer/docker"
+	"github.com/henrique-ferreira-unvoid/go-jo/apps/go-jo-integration-installer/utils"
 )
 
 // selectionModel represents the state of the selection interface
@@ -117,6 +118,14 @@ func Run() error {
  ╚██████╔╝╚██████╔╝      ╚█████╔╝╚██████╔╝
  ╚═════╝  ╚═════╝        ╚════╝  ╚═════`)
 
+	// Check if Docker is running
+	fmt.Printf("\033[36m🔍 Checking Docker status...\033[0m\n")
+	if err := docker.CheckDocker(); err != nil {
+		fmt.Printf("\033[31m❌ Docker is not running: %v\033[0m\n", err)
+		return fmt.Errorf("Docker is required but not running: %w", err)
+	}
+	fmt.Printf("\033[32m✅ Docker is running\033[0m\n")
+
 	// Load configuration
 	cfg, err := config.Load()
 	if err != nil {
@@ -125,14 +134,14 @@ func Run() error {
 	}
 
 	// Parse command line arguments
-	licensePath, err := parseLicenseFlag()
+	licensePath, err := utils.ParseLicenseFlag()
 	if err != nil {
 		fmt.Printf("\033[31m❌ %v\033[0m\n", err)
 		return err
 	}
 
 	// Read license key from file
-	licenseKey, err := readLicenseKey(licensePath)
+	licenseKey, err := utils.ReadLicenseKey(licensePath)
 	if err != nil {
 		fmt.Printf("\033[31m❌ Failed to read license key: %v\033[0m\n", err)
 		return fmt.Errorf("failed to read license key: %w", err)
@@ -202,52 +211,49 @@ func Run() error {
 	fmt.Printf("\n\033[32m✅ Package downloaded successfully: %s\033[0m\n", outputPath)
 	fmt.Printf("\033[36m📁 Location: %s\033[0m\n", filepath.Join(".", outputPath))
 
+	// Extract and deploy the package
+	fmt.Printf("\033[35m🚀 Extracting and deploying package...\033[0m\n")
+	if err := extractAndDeploy(outputPath); err != nil {
+		fmt.Printf("\033[31m❌ Failed to deploy package: %v\033[0m\n", err)
+		return fmt.Errorf("failed to deploy package: %w", err)
+	}
+
+	fmt.Printf("\n\033[32m🎉 Deployment completed successfully!\033[0m\n")
+	fmt.Printf("\033[36m📋 The go-jo application is now running in Docker containers.\033[0m\n")
+
 	return nil
 }
 
-// parseLicenseFlag parses the --license flag from command line arguments
-func parseLicenseFlag() (string, error) {
-	if len(os.Args) < 1 {
-		return "", fmt.Errorf("usage: %s --license=<path-to-license-file>", os.Args[0])
-	}
-
-	for _, arg := range os.Args {
-		// Check for --license=<path> format
-		if strings.HasPrefix(arg, "--license=") {
-			licensePath := strings.TrimPrefix(arg, "--license=")
-			if licensePath == "" {
-				return "", fmt.Errorf("--license flag requires a file path")
-			}
-			return licensePath, nil
-		}
-	}
-
-	// Check for --license <path> format (separate arguments)
-	for i, arg := range os.Args {
-		if arg == "--license" {
-			if i+1 >= len(os.Args) {
-				return "", fmt.Errorf("--license flag requires a file path")
-			}
-			return os.Args[i+1], nil
-		}
-	}
-
-	return "", fmt.Errorf("--license flag is required")
-}
-
-// readLicenseKey reads the license key from the specified file
-func readLicenseKey(filePath string) (string, error) {
-	content, err := os.ReadFile(filePath)
+// extractAndDeploy extracts the zip file and runs the deployment
+func extractAndDeploy(zipPath string) error {
+	// Create temporary directory
+	tempDir, err := os.MkdirTemp("", "go-jo-deploy-*")
 	if err != nil {
-		return "", fmt.Errorf("failed to read license file: %w", err)
+		return fmt.Errorf("failed to create temp directory: %w", err)
+	}
+	defer os.RemoveAll(tempDir) // Clean up on exit
+
+	fmt.Printf("\033[36m📂 Extracting to: %s\033[0m\n", tempDir)
+
+	// Extract the zip file
+	if err := utils.ExtractZip(zipPath, tempDir); err != nil {
+		return fmt.Errorf("failed to extract zip file: %w", err)
 	}
 
-	licenseKey := strings.TrimSpace(string(content))
-	if licenseKey == "" {
-		return "", fmt.Errorf("license file is empty")
+	// Find the extracted directory (should contain docker-compose.yml and Makefile)
+	deployDir, err := utils.FindDeployDirectory(tempDir)
+	if err != nil {
+		return fmt.Errorf("failed to find deployment directory: %w", err)
 	}
 
-	return licenseKey, nil
+	fmt.Printf("\033[36m🔧 Deploying from: %s\033[0m\n", deployDir)
+
+	// Run make build and make start
+	if err := docker.RunMakeCommands(deployDir); err != nil {
+		return fmt.Errorf("failed to run make commands: %w", err)
+	}
+
+	return nil
 }
 
 // interactiveSelection provides a robust interactive selection using bubbletea
