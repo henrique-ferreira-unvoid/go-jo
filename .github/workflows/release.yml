@@ -29,11 +29,6 @@ on:
         required: false
         default: false
         type: boolean
-      skip_merge:
-        description: "Skip branch merging (use current main)"
-        required: false
-        default: false
-        type: boolean
 
 permissions:
   contents: write
@@ -43,68 +38,8 @@ env:
   GO_VERSION: "1.24"
 
 jobs:
-  merge-branches:
-    runs-on: ubuntu-latest
-    if: ${{ !inputs.skip_merge }}
-    outputs:
-      merge_completed: ${{ steps.merge-check.outputs.completed }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Configure Git
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-
-      - name: Merge dev to main for release
-        id: merge-check
-        run: |
-          # First ensure main is up to date with dev
-          BRANCH_NAME="dev-to-main-release-$(date +%Y-%m-%d-%H%M%S)"
-
-          # Create branch from main and pull from dev
-          git checkout main
-          git pull origin main
-          git checkout dev
-          git pull origin dev
-          git checkout main
-          git checkout -b $BRANCH_NAME
-
-          # Try to merge dev into the branch
-          if git merge dev --no-edit; then
-            echo "Merge successful"
-            git push origin $BRANCH_NAME
-            
-            # Create and auto-merge PR
-            gh pr create \
-              --title "Release preparation: dev → main" \
-              --body "Automated merge of dev into main for release preparation." \
-              --head $BRANCH_NAME \
-              --base main
-            
-            # Enable auto-merge and wait for it
-            gh pr merge $BRANCH_NAME --auto --squash
-            
-            # Wait a bit for the merge to complete
-            sleep 30
-            
-            echo "completed=true" >> $GITHUB_OUTPUT
-          else
-            echo "Merge conflicts detected. Please resolve manually."
-            echo "completed=false" >> $GITHUB_OUTPUT
-            exit 1
-          fi
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
   determine-version:
     runs-on: ubuntu-latest
-    needs: [merge-branches]
-    if: ${{ always() && (inputs.skip_merge || needs.merge-branches.outputs.merge_completed == 'true') }}
     outputs:
       version: ${{ steps.version.outputs.version }}
       version_source: ${{ steps.version.outputs.version_source }}
@@ -240,9 +175,18 @@ jobs:
     secrets:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  release-installer:
+    needs: [determine-version]
+    uses: ./.github/workflows/release-installer.yml
+    with:
+      version: ${{ needs.determine-version.outputs.version }}
+      prerelease: ${{ inputs.pre_release }}
+    secrets:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   publish-release:
     runs-on: ubuntu-latest
-    needs: [determine-version, release-main, release-api]
+    needs: [determine-version, release-main, release-api, release-installer]
     permissions:
       contents: write
     steps:
@@ -272,11 +216,12 @@ jobs:
           # Prepare release notes
           echo "## Release $VERSION" > release_notes.md
           echo "" >> release_notes.md
-          echo "This release includes both go-jo and go-jo-api applications." >> release_notes.md
+          echo "This release includes go-jo, go-jo-api, and go-jo-integration-installer applications." >> release_notes.md
           echo "" >> release_notes.md
           echo "### Applications Included:" >> release_notes.md
           echo "- 🚀 **go-jo** - Main CLI application" >> release_notes.md
           echo "- 🌐 **go-jo-api** - REST API service" >> release_notes.md
+          echo "- 🔧 **go-jo-integration-installer** - Interactive integration installer" >> release_notes.md
           echo "" >> release_notes.md
           echo "### Installation:" >> release_notes.md
           echo "" >> release_notes.md
@@ -292,6 +237,12 @@ jobs:
           echo "sudo nano /etc/go-jo-api/.env  # Configure tokens" >> release_notes.md
           echo "sudo systemctl start go-jo-api" >> release_notes.md
           echo '```' >> release_notes.md
+          echo "" >> release_notes.md
+          echo "#### go-jo-integration-installer (Binary):" >> release_notes.md
+          echo '```bash' >> release_notes.md
+          echo "chmod +x go-jo-integration-installer_*_linux_amd64" >> release_notes.md
+          echo "./go-jo-integration-installer_*_linux_amd64 --license=<path-to-license-file>" >> release_notes.md
+          echo '```' >> release_notes.md
           
           # Create release with all artifacts
           PRERELEASE_FLAG=""
@@ -304,7 +255,8 @@ jobs:
             --title "Release $VERSION" \
             --notes-file release_notes.md \
             ./artifacts/go-jo-artifacts/* \
-            ./artifacts/go-jo-api-artifacts/*
+            ./artifacts/go-jo-api-artifacts/* \
+            ./artifacts/go-jo-installer-artifacts/*
 
       - name: Create release summary
         run: |
@@ -323,11 +275,9 @@ jobs:
           esac
 
           echo "**Pre-release:** ${{ inputs.pre_release }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Branch merging:** ${{ inputs.skip_merge && 'Skipped' || 'Completed' }}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Released Applications" >> $GITHUB_STEP_SUMMARY
           echo "- ✅ go-jo (binary + .deb package)" >> $GITHUB_STEP_SUMMARY
           echo "- ✅ go-jo-api (.deb package + systemd service)" >> $GITHUB_STEP_SUMMARY
-          echo "- ⏳ go-jo-integration-installer (coming soon)" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ go-jo-integration-installer (binary + tar.gz)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "🎉 **Release ${{ needs.determine-version.outputs.version }} published successfully!**" >> $GITHUB_STEP_SUMMARY

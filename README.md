@@ -129,7 +129,7 @@ Located at `.github/workflows/validate.yml`, this workflow runs on PRs and pushe
 Each release includes:
 - **go-jo**: `.deb` package for CLI installation
 - **go-jo-api**: `.deb` package with systemd service
-- **go-jo-integration-installer**: Binary file for manual execution
+- **go-jo-integration-installer**: Binary file and tar.gz archive for manual execution
 
 ### Installation Instructions
 
