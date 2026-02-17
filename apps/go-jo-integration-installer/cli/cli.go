@@ -143,6 +143,12 @@ func Run() error {
 		return err
 	}
 
+	requestedVersion, err := utils.ParseVersionFlag()
+	if err != nil {
+		fmt.Printf("\033[31m❌ %v\033[0m\n", err)
+		return err
+	}
+
 	// Read license key from file
 	licenseKey, err := utils.ReadLicenseKey(licensePath)
 	if err != nil {
@@ -153,25 +159,30 @@ func Run() error {
 	// Initialize API client
 	client := api.NewClient(cfg.APIURL, licenseKey)
 
-	// Get available versions
-	fmt.Printf("\033[36m🔍 Fetching available versions...\033[0m\n")
-	versions, err := client.GetVersions()
-	if err != nil {
-		fmt.Printf("\033[31m❌ Failed to fetch versions: %v\033[0m\n", err)
-		return fmt.Errorf("failed to fetch versions: %w", err)
-	}
+	selectedVersion := requestedVersion
+	if selectedVersion == "" {
+		// Get available versions
+		fmt.Printf("\033[36m🔍 Fetching available versions...\033[0m\n")
+		versions, err := client.GetVersions()
+		if err != nil {
+			fmt.Printf("\033[31m❌ Failed to fetch versions: %v\033[0m\n", err)
+			return fmt.Errorf("failed to fetch versions: %w", err)
+		}
 
-	if len(versions) == 0 {
-		fmt.Printf("\033[31m❌ No versions available\033[0m\n")
-		return fmt.Errorf("no versions available")
-	}
+		if len(versions) == 0 {
+			fmt.Printf("\033[31m❌ No versions available\033[0m\n")
+			return fmt.Errorf("no versions available")
+		}
 
-	// Display versions and get user selection
-	fmt.Printf("\033[33m📦 Available versions:\033[0m\n")
-	selectedVersion, err := interactiveSelection(versions, "\033[32mSelect version\033[0m", &versions[0])
-	if err != nil {
-		fmt.Printf("\033[31m❌ Version selection failed: %v\033[0m\n", err)
-		return err
+		// Display versions and get user selection
+		fmt.Printf("\033[33m📦 Available versions:\033[0m\n")
+		selectedVersion, err = interactiveSelection(versions, "\033[32mSelect version\033[0m", &versions[0])
+		if err != nil {
+			fmt.Printf("\033[31m❌ Version selection failed: %v\033[0m\n", err)
+			return err
+		}
+	} else {
+		fmt.Printf("\033[36m🎯 Using provided version tag: %s\033[0m\n", selectedVersion)
 	}
 
 	fmt.Printf("\033[32m✅ Selected version: %s\033[0m\n", selectedVersion)

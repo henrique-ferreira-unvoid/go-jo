@@ -35,3 +35,36 @@ func ParseLicenseFlag() (string, error) {
 
 	return "", fmt.Errorf("--license flag is required")
 }
+
+// ParseVersionFlag parses the optional --version flag from command line arguments.
+// Returns an empty string when the flag is not provided.
+func ParseVersionFlag() (string, error) {
+	for _, arg := range os.Args {
+		// Check for --version=<tag> format
+		if strings.HasPrefix(arg, "--version=") {
+			version := strings.TrimPrefix(arg, "--version=")
+			if version == "" {
+				return "", fmt.Errorf("--version flag requires a tag")
+			}
+			return version, nil
+		}
+	}
+
+	// Check for --version <tag> format (separate arguments)
+	for i, arg := range os.Args {
+		if arg == "--version" {
+			if i+1 >= len(os.Args) {
+				return "", fmt.Errorf("--version flag requires a tag")
+			}
+
+			version := os.Args[i+1]
+			if strings.TrimSpace(version) == "" || strings.HasPrefix(version, "--") {
+				return "", fmt.Errorf("--version flag requires a tag")
+			}
+
+			return version, nil
+		}
+	}
+
+	return "", nil
+}
