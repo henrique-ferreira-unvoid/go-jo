@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/henrique-ferreira-unvoid/go-jo/apps/go-jo-api/api/domain"
+	"apps/go-jo-api/api/domain"
 )
 
 // BaseHandler contains common functionality for all handlers

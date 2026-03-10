@@ -4,7 +4,7 @@ import (
 	"log"
 
 	"github.com/gorilla/mux"
-	"github.com/henrique-ferreira-unvoid/go-jo/apps/go-jo-api/api/domain"
+	"apps/go-jo-api/api/domain"
 )
 
 // Router manages the main application router

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/henrique-ferreira-unvoid/go-jo/apps/go-jo-integration-installer/cli"
+	"apps/go-jo-integration-installer/cli"
 )
 
 func main() {

@@ -6,11 +6,12 @@ import (
 	"path/filepath"
 	"strings"
 
+	"apps/go-jo-integration-installer/api"
+	"apps/go-jo-integration-installer/config"
+	"apps/go-jo-integration-installer/docker"
+	"apps/go-jo-integration-installer/utils"
+
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/henrique-ferreira-unvoid/go-jo/apps/go-jo-integration-installer/api"
-	"github.com/henrique-ferreira-unvoid/go-jo/apps/go-jo-integration-installer/config"
-	"github.com/henrique-ferreira-unvoid/go-jo/apps/go-jo-integration-installer/docker"
-	"github.com/henrique-ferreira-unvoid/go-jo/apps/go-jo-integration-installer/utils"
 )
 
 const MAX_OPTIONS = 15

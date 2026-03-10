@@ -3,7 +3,7 @@ package main
 import (
 	"log"
 
-	"github.com/henrique-ferreira-unvoid/go-jo/apps/go-jo-api/api"
+	"apps/go-jo-api/api"
 )
 
 func main() {

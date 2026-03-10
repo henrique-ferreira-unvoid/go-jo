@@ -7,7 +7,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/henrique-ferreira-unvoid/go-jo/apps/go-jo-api/api/domain"
+	"apps/go-jo-api/api/domain"
 )
 
 // VersionsHandler handles version-related requests

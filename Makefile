@@ -1,26 +1,6 @@
 # go-jo Monorepo Makefile
 .PHONY: help gojo-build gojo-dev gojo-package clean api-build api-dev api-package
 
-# Default target
-help:
-	@echo "Available targets:"
-	@echo ""
-	@echo "Go-jo app:"
-	@echo "  gojo-build        - Build go-jo binary for local development"
-	@echo "  gojo-package      - Create go-jo .deb package (requires git tag or uses fake tag)"
-	@echo "  gojo-dev          - Run go-jo in development mode"
-	@echo ""
-	@echo "Go-jo API:"
-	@echo "  api-build         - Build go-jo-api binary for local development"
-	@echo "  api-package       - Create go-jo-api .deb package for testing"
-	@echo "  api-dev           - Run go-jo-api in development mode"
-	@echo ""
-	@echo "General:"
-	@echo "  clean             - Clean build artifacts"
-	@echo "  build-all         - Build all applications"
-	@echo "  package-all       - Package all applications"
-	@echo "  help              - Show this help message"
-
 # Build targets
 gojo-build:
 	@echo "Building go-jo..."
@@ -80,16 +60,27 @@ clean:
 	@rm -rf dist/
 	@rm -rf .goreleaser/
 
+sync:
+	@echo "Syncing dependencies..."
+	go work sync
+
 help:
 	@echo "Available targets:"
+	@echo "Go-jo:"
 	@echo "  gojo-build          - Build go-jo binary"
-	@echo "  api-build           - Build go-jo-api binary"
-	@echo "  installer-build     - Build go-jo-integration-installer binary"
-	@echo "  build-all           - Build all applications"
 	@echo "  gojo-package        - Create go-jo .deb package"
-	@echo "  api-package         - Create go-jo-api .deb package"
-	@echo "  package-all         - Create all packages"
 	@echo "  gojo-dev            - Run go-jo in development mode"
-	@echo "  api-dev             - Run go-jo-api in development mode"
-	@echo "  clean               - Clean build artifacts"
-	@echo "  help                - Show this help message" 
+	@echo ""
+	@echo "Go-jo Integration Installer:"
+	@echo "  installer-build     - Build go-jo-integration-installer binary"
+	@echo ""
+	@echo "Go-jo API:"
+	@echo "  api-build         - Build go-jo-api binary for local development"
+	@echo "  api-package       - Create go-jo-api .deb package for testing"
+	@echo "  api-dev           - Run go-jo-api in development mode"
+	@echo ""
+	@echo "General:"
+	@echo "  clean             - Clean build artifacts"
+	@echo "  build-all         - Build all applications"
+	@echo "  package-all       - Package all applications"
+	@echo "  help              - Show this help message"

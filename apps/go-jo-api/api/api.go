@@ -4,8 +4,8 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/henrique-ferreira-unvoid/go-jo/apps/go-jo-api/api/domain"
-	"github.com/henrique-ferreira-unvoid/go-jo/apps/go-jo-api/api/router"
+	"apps/go-jo-api/api/domain"
+	"apps/go-jo-api/api/router"
 	"github.com/joho/godotenv"
 )
 

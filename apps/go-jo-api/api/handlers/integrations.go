@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"sort"
 
-	"github.com/henrique-ferreira-unvoid/go-jo/apps/go-jo-api/api/domain"
+	"apps/go-jo-api/api/domain"
 )
 
 // IntegrationsHandler handles integration-related requests

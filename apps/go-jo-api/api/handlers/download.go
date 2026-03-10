@@ -12,7 +12,7 @@ import (
 	"strings"
 
 	"github.com/gorilla/mux"
-	"github.com/henrique-ferreira-unvoid/go-jo/apps/go-jo-api/api/domain"
+	"apps/go-jo-api/api/domain"
 )
 
 // DownloadHandler handles download-related requests

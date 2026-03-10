@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/henrique-ferreira-unvoid/go-jo/apps/go-jo-api/api/domain"
+	"apps/go-jo-api/api/domain"
 )
 
 // HealthHandler handles health check requests

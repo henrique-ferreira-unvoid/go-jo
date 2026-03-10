@@ -1,9 +1,10 @@
 package router
 
 import (
+	"apps/go-jo-api/api/domain"
+
 	"github.com/gorilla/mux"
-	"github.com/henrique-ferreira-unvoid/go-jo/apps/go-jo-api/api/domain"
-	"github.com/henrique-ferreira-unvoid/go-jo/apps/go-jo-api/api/handlers"
+	"apps/go-jo-api/api/handlers"
 )
 
 // SubrouterBuilder contains handlers and configuration for building subrouters

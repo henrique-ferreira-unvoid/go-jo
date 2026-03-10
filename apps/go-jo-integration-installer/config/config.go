@@ -7,7 +7,7 @@ import (
 	"github.com/joho/godotenv"
 )
 
-const DEFAULT_API_URL = "http://127.0.0.1"
+const DEFAULT_API_URL = "http://ec2-56-125-224-81.sa-east-1.compute.amazonaws.com"
 
 // Config holds the application configuration
 type Config struct {
