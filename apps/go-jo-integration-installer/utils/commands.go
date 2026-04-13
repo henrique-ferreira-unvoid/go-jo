@@ -68,3 +68,19 @@ func ParseVersionFlag() (string, error) {
 
 	return "", nil
 }
+
+// ParseAPIURLFlag parses the optional --api-url flag from command line arguments.
+// Returns an empty string when the flag is not provided.
+func ParseAPIURLFlag() (string, error) {
+	for _, arg := range os.Args {
+		if after, ok := strings.CutPrefix(arg, "--api-url="); ok {
+			apiURL := after
+			if apiURL == "" {
+				return "", fmt.Errorf("--api-url flag requires a URL")
+			}
+			return apiURL, nil
+		}
+	}
+
+	return "", nil
+}

@@ -150,6 +150,16 @@ func Run() error {
 		return err
 	}
 
+	apiURL, err := utils.ParseAPIURLFlag()
+	if err != nil {
+		fmt.Printf("\033[31m❌ %v\033[0m\n", err)
+		return err
+	}
+
+	if apiURL != "" {
+		cfg.APIURL = apiURL
+	}
+
 	// Read license key from file
 	licenseKey, err := utils.ReadLicenseKey(licensePath)
 	if err != nil {
